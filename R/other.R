@@ -98,7 +98,7 @@ schwab_optionChain = function(ticker, strikes, inclQuote = TRUE,
                            '&includeUnderlyingQuote=',inclQuote,
                            '&fromDate=',startDate,
                            '&toDate=',endDate)
-  print(optionURL)
+
   options =  httr::GET(optionURL,schwab_headers(accessToken))
   # Confirm status code of 200
   schwab_status(options)

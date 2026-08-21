@@ -1,7 +1,7 @@
 Package: schwabr
 Type: Package
 Title: 'Schwab API' Interface
-Version: 0.1.4
+Version: 0.1.5
 Author: Anthony Trevisan [aut, cre]
 Authors@R: 
     person(given = "Anthony",
@@ -20,8 +20,10 @@ Encoding: UTF-8
 Imports: httr, urltools (>= 1.7.3), base64enc, lubridate, dplyr,
         jsonlite, magrittr, methods
 RoxygenNote: 7.3.2
-Suggests: testthat
+Depends: R (>= 4.0.0)
+Suggests: testthat (>= 3.0.0)
+Config/testthat/edition: 3
 NeedsCompilation: no
-Packaged: 2025-11-03 10:57:03 UTC; tonytrevisan
+Packaged: 2026-08-21 13:28:40 UTC; tonytrevisan
 Repository: CRAN
-Date/Publication: 2025-11-03 11:10:02 UTC
+Date/Publication: 2026-08-21 15:30:02 UTC

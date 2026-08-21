@@ -1,6 +1,10 @@
-# schwabr 0.1.3
+# schwabr 0.1.5
 
 ## Release Notes and News
+
+### schwabr 0.1.5 - 8/21/2026
+
+Adding error handling for Price pulls and ability to pull fields.
 
 ### schwabr 0.1.4 - 11/3/2025
 

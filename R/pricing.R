@@ -7,6 +7,8 @@
 #' Otherwise the quotes will be delayed.
 #'
 #' @param tickers One or more tickers
+#' @param fields valid fields should be any of all,fundamental,reference,extended,
+#'.  quote,regular or empty value
 #' @param output indication on whether the data should be returned as a list or
 #'   df. The default is 'df' for data frame, anything else would be a list.
 #' @inheritParams schwab_accountData
@@ -30,7 +32,8 @@
 #' quoteList = schwab_priceQuote(c('GOOG','TSLA'), output = 'list', accessToken)
 #'
 #' }
-schwab_priceQuote = function(tickers = c('AAPL','MSFT'), output = 'df', accessTokenList=NULL) {
+schwab_priceQuote = function(tickers = c('AAPL','MSFT'), output = 'df',
+                             fields = c('quote'), accessTokenList=NULL) {
 
   # Check output desired and pass to helper function
   if (output != 'df') {
@@ -158,19 +161,30 @@ schwab_history_single = function(ticker='AAPL',startDate=Sys.Date()-30,endDate=S
                       '&needExtendedHoursData=',extended_hours)
   }
 
-   # Send request
-  tickRequest = httr::GET(PriceURL,schwab_headers(accessToken))
+   # Send request with retry on parse failure
+  for(attempt in 1:2){
+    tickRequest = httr::GET(PriceURL, schwab_headers(accessToken))
 
-  # Confirm status code of 200
-  schwab_status(tickRequest)
+    # Confirm status code of 200
+    schwab_status(tickRequest)
 
-  # Extract pricing data from request
-  tickHist <- httr::content(tickRequest, as = "text")
-  tickHist <- jsonlite::fromJSON(tickHist)
-  tickHist <- tickHist[["candles"]]
+    # Extract pricing data from request
+    tickHist <- tryCatch({
+      raw_text <- httr::content(tickRequest, as = "text")
+      parsed <- jsonlite::fromJSON(raw_text)
+      parsed[["candles"]]
+    }, error = function(e){
+      warning(paste0('Price history parse failed for ', ticker, ': ', e$message))
+      NULL
+    })
+
+    # If parse succeeded or final attempt, break
+    if(!is.null(tickHist) || attempt == 2) break
+    Sys.sleep(0.5)
+  }
 
   # If no data was pulled, exit the request
-  if (methods::is(tickHist, "list")) return()
+  if (is.null(tickHist) || methods::is(tickHist, "list")) return()
   tickHist$ticker = ticker
   tickHist$date_time = lubridate::as_datetime(tickHist$datetime/1000, tz='America/New_York')
   tickHist$date = as.Date(tickHist$date_time)
@@ -183,7 +197,8 @@ schwab_history_single = function(ticker='AAPL',startDate=Sys.Date()-30,endDate=S
 
 # ----------- Helper function
 # Get quote as a list
-schwab_quote_list = function(tickers = c('AAPL','SPY'), accessTokenList=NULL, indicative = FALSE) {
+schwab_quote_list = function(tickers = c('AAPL','SPY'), fields = c('quote','fundamental'),
+                             accessTokenList=NULL, indicative = FALSE) {
 
   # Get access token from options if one is not passed
   accessToken = schwab_accessToken(accessTokenList)
@@ -191,22 +206,38 @@ schwab_quote_list = function(tickers = c('AAPL','SPY'), accessTokenList=NULL, in
   # Create URL for all the tickers
   quoteURL = base::paste0('https://api.schwabapi.com/marketdata/v1/quotes?symbols=',
                           toupper(urltools::url_encode(paste0(tickers,collapse = ','))),
+                          '&fields=',tolower(urltools::url_encode(paste0(fields,collapse = ','))),
                           '&indicative=',indicative)
-  quotes =  httr::GET(quoteURL,schwab_headers(accessToken))
 
-  # Confirm status code of 200
-  schwab_status(quotes)
+  # Send request with retry on parse failure
+  for(attempt in 1:2){
+    quotes = httr::GET(quoteURL, schwab_headers(accessToken))
+
+    # Confirm status code of 200
+    schwab_status(quotes)
+
+    quoteContent <- tryCatch({
+      httr::content(quotes)
+    }, error = function(e){
+      warning(paste0('Quote parse failed: ', e$message))
+      NULL
+    })
+
+    if(!is.null(quoteContent) || attempt == 2) break
+    Sys.sleep(0.5)
+  }
 
   # Return content of quotes
-  return(httr::content(quotes))
+  return(quoteContent)
 }
 
 # ----------- Helper function
 # get quotes as a tibble
-schwab_quote_df = function(tickers = c('AAPL','SPY'),accessTokenList=NULL) {
+schwab_quote_df = function(tickers = c('AAPL','SPY'),fields = c('quote','fundamental'),
+                           accessTokenList=NULL) {
   quote.tradeTime  <- NULL
   # Get list of quotes
-  quoteList = schwab_quote_list(tickers,accessTokenList)
+  quoteList = schwab_quote_list(tickers,fields,accessTokenList)
 
   # Return data frame from list
   dplyr::bind_rows(lapply(quoteList,data.frame)) %>%

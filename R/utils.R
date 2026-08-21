@@ -57,8 +57,21 @@ schwab_status = function(x,msg=NULL){
     SC = x$status_code
     if (SC!=200 & SC!=201) {
 
-        # Default to TD Error message and append custom if needed
-        ErrMsg = httr::content(x)$error
+        # Safely extract error message from response
+        ErrMsg = tryCatch({
+            body = httr::content(x)
+            if (is.list(body) && !is.null(body$error)) {
+                body$error
+            } else if (is.list(body) && !is.null(body$message)) {
+                body$message
+            } else if (is.character(body)) {
+                substr(body, 1, 200)
+            } else {
+                paste0("HTTP ", SC)
+            }
+        }, error = function(e) {
+            paste0("HTTP ", SC, " (could not parse response body)")
+        })
         stop(paste0(SC,' - ',ErrMsg,msg), call. = FALSE)
 
     }

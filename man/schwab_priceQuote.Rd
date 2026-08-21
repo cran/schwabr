@@ -7,6 +7,7 @@
 schwab_priceQuote(
   tickers = c("AAPL", "MSFT"),
   output = "df",
+  fields = c("quote"),
   accessTokenList = NULL
 )
 }
@@ -15,6 +16,9 @@ schwab_priceQuote(
 
 \item{output}{indication on whether the data should be returned as a list or
 df. The default is 'df' for data frame, anything else would be a list.}
+
+\item{fields}{valid fields should be any of all,fundamental,reference,extended,
+.  quote,regular or empty value}
 
 \item{accessTokenList}{A valid Access Token must be set using the output from
 \code{\link{schwab_auth3_accessToken}}. The most recent Access Token will be
